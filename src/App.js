@@ -1,10 +1,11 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import Background from './components/Background/Background';
 import Navigation from './components/Navigation/Navigation';
-import Logo from './components/Logo/Logo';
 import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
 import Rank from './components/Rank/Rank';
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
+import Signin from './components/Signin/Signin';
+import Register from './components/Register/Register';
 import Clarifai from 'clarifai';
 
 import './App.css';
@@ -19,29 +20,27 @@ class App extends Component {
     this.state = {
       input: '',
       imageUrl: '',
-      boxes: []
+      boxes: [],
+      route: 'signin',
+      isSignedIn: false
     };
   }
 
   calculateFaceLocation = dataFromServer => {
-    const allBoxes = dataFromServer.outputs[0].data.regions;
-    const retBoxes = [];
-    allBoxes.map(el => {
-      return retBoxes.push(el.region_info.bounding_box);
-    });
-    const boxesPositions = [];
+    const boxes = dataFromServer.outputs[0].data.regions;
+    const positions = [];
     const image = document.getElementById('inputImage');
     const width = Number(image.width);
     const height = Number(image.height);
-    retBoxes.map(box => {
-      return boxesPositions.push({
-        leftCol: box.left_col * width,
-        topRow: box.top_row * height,
-        rightCol: width - box.right_col * width,
-        bottomRow: height - box.bottom_row * height
+    boxes.map(el => {
+      return positions.push({
+        leftCol: el.region_info.bounding_box.left_col * width,
+        topRow: el.region_info.bounding_box.top_row * height,
+        rightCol: width - el.region_info.bounding_box.right_col * width,
+        bottomRow: height - el.region_info.bounding_box.bottom_row * height
       });
     });
-    return boxesPositions;
+    return positions;
   };
 
   displayFaceBox = boxes => {
@@ -49,7 +48,6 @@ class App extends Component {
   };
 
   onInputChange = event => {
-    console.log(event.target.value);
     this.setState({ input: event.target.value });
   };
 
@@ -66,22 +64,36 @@ class App extends Component {
     }
   };
 
+  onRouteChange = route => {
+    if (route === 'signout') this.setState({ isSignedIn: false });
+    else if (route === 'home') this.setState({ isSignedIn: true });
+    this.setState({ route: route });
+  };
+
   render() {
+    const { isSignedIn, imageUrl, route, boxes } = this.state;
     return (
       <div className='App'>
         <Background />
-        <Navigation />
-        <Logo />
-        <Rank />
-        <ImageLinkForm
-          onInputChange={this.onInputChange}
-          onButtonSubmit={this.onButtonSubmit}
+        <Navigation
+          onRouteChange={this.onRouteChange}
+          isSignedIn={isSignedIn}
         />
-        {this.state.imageUrl && (
-          <FaceRecognition
-            boxes={this.state.boxes}
-            imageUrl={this.state.imageUrl}
-          />
+        {route === 'home' ? (
+          <Fragment>
+            <Rank />
+            <ImageLinkForm
+              onInputChange={this.onInputChange}
+              onButtonSubmit={this.onButtonSubmit}
+            />
+            {imageUrl !== '' && (
+              <FaceRecognition boxes={boxes} imageUrl={imageUrl} />
+            )}
+          </Fragment>
+        ) : route === 'signin' ? (
+          <Signin onRouteChange={this.onRouteChange} />
+        ) : (
+          <Register onRouteChange={this.onRouteChange} />
         )}
       </div>
     );
